@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3.5 Diffusion &amp; Effusion Simulator | Lava Lab Science</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#10161f; --panel2:#151c27; --line:rgba(255,255,255,0.07);
+    --grid:rgba(255,255,255,0.035);
+    --teal:#2dd4bf; --violet:#a78bfa; --amber:#fbbf24; --rose:#fb7185;
+    --text:#e2e8f0; --dim:#8b98ab; --dim2:#5b6779;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --good:#4ade80; --bad:#fb7185;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+    min-height:100vh;
+  }
+  .app{max-width:1180px;margin:0 auto;padding:14px 16px 60px;}
+  .wordmark{
+    font-size:9.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;
+    background:linear-gradient(90deg,var(--teal),var(--violet),var(--amber));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    margin:0 0 6px 2px; display:inline-block;
+  }
+  header.hd{margin-bottom:14px;}
+  h1{font-size:1.35rem;margin:2px 0 4px;font-weight:700;letter-spacing:-0.01em;}
+  .sub{color:var(--dim);font-size:0.86rem;line-height:1.5;max-width:74ch;}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 10px;}
+  .tab-btn{
+    background:var(--panel);border:1px solid var(--line);color:var(--dim);
+    padding:8px 16px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;
+    transition:all .15s;
+  }
+  .tab-btn:hover{color:var(--text);border-color:rgba(255,255,255,0.15);}
+  .tab-btn.active{color:var(--bg);background:linear-gradient(90deg,var(--teal),var(--violet));border-color:transparent;}
+  .sec-tabs{display:flex;gap:6px;margin-bottom:14px;}
+  .sec-btn{
+    background:transparent;border:1px solid var(--line);color:var(--dim);
+    padding:6px 14px;border-radius:20px;font-size:0.78rem;font-weight:600;cursor:pointer;
+  }
+  .sec-btn.active{color:var(--amber);border-color:var(--amber);background:rgba(251,191,36,0.08);}
+  .pair-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+  .pair-btn{
+    background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+    padding:8px 14px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;font-family:var(--mono);
+  }
+  .pair-btn.active{color:var(--violet);border-color:var(--violet);background:rgba(167,139,250,0.1);}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;}
+  .col{flex:1 1 320px;min-width:0;}
+  label.lbl{font-size:0.72rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:4px;}
+  select, input[type=number]{
+    background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    padding:7px 10px;border-radius:7px;font-size:0.85rem;width:100%;font-family:var(--sans);
+  }
+  .ctrl-group{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;}
+  .ctrl-item{min-width:150px;flex:1 1 150px;}
+  .btn{
+    background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    padding:8px 16px;border-radius:7px;font-size:0.82rem;font-weight:600;cursor:pointer;
+  }
+  .btn.primary{background:linear-gradient(90deg,var(--teal),#14b8a6);border-color:transparent;color:#04140f;}
+  .btn.primary:hover{filter:brightness(1.08);}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .speed-set{display:flex;gap:4px;}
+  .speed-btn{padding:6px 10px;font-size:0.72rem;background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:6px;cursor:pointer;}
+  .speed-btn.active{color:var(--teal);border-color:var(--teal);}
+  canvas{width:100%;display:block;background:#080b10;border-radius:8px;border:1px solid var(--line);}
+  .stat-strip{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  .stat-chip{
+    background:var(--panel2);border:1px dashed rgba(255,255,255,0.18);border-radius:8px;
+    padding:6px 12px;font-family:var(--mono);font-size:0.78rem;color:var(--text);flex:1 1 140px;
+  }
+  .stat-chip .k{color:var(--dim);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:2px;font-family:var(--sans);}
+  .banner{
+    border-radius:8px;padding:10px 14px;font-size:0.83rem;margin:10px 0;border:1px solid var(--line);
+  }
+  .banner.rx{background:rgba(45,212,191,0.08);border-color:rgba(45,212,191,0.35);color:var(--teal);}
+  .banner.mix{background:rgba(148,163,184,0.08);border-color:rgba(148,163,184,0.3);color:var(--dim);}
+  .formula{font-family:var(--mono);color:var(--amber);}
+  .gas-check-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+  .gcheck{
+    display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:20px;padding:5px 12px;font-size:0.78rem;cursor:pointer;user-select:none;
+  }
+  .gcheck input{accent-color:var(--teal);}
+  .gcheck .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .gcheck.disabled{opacity:0.35;cursor:not-allowed;}
+  table.stats-tbl{width:100%;border-collapse:collapse;font-size:0.8rem;margin-top:10px;}
+  table.stats-tbl td, table.stats-tbl th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;}
+  table.stats-tbl th{color:var(--dim);font-weight:600;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;}
+  .bar-track{width:100%;height:8px;border-radius:4px;background:rgba(255,255,255,0.06);overflow:hidden;display:flex;}
+  .bar-fill{height:100%;}
+  .note{font-size:0.78rem;color:var(--dim2);margin-top:8px;line-height:1.5;}
+  /* Guided */
+  .step-progress{font-family:var(--mono);font-size:0.75rem;color:var(--dim);margin-bottom:8px;}
+  .step-title{font-size:1.05rem;font-weight:700;margin:0 0 8px;}
+  .step-text{font-size:0.88rem;line-height:1.55;color:var(--text);margin-bottom:12px;}
+  .predict-opts{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+  .predict-opt{
+    background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;
+    font-size:0.84rem;cursor:pointer;
+  }
+  .predict-opt:hover{border-color:rgba(255,255,255,0.2);}
+  .predict-opt.selected{border-color:var(--violet);background:rgba(167,139,250,0.1);}
+  .predict-opt.correct{border-color:var(--good);background:rgba(74,222,128,0.12);}
+  .predict-opt.wrong{border-color:var(--bad);background:rgba(251,113,133,0.12);}
+  .reveal{background:var(--panel2);border-left:3px solid var(--amber);border-radius:6px;padding:10px 14px;font-size:0.84rem;line-height:1.55;margin-top:10px;display:none;}
+  .reveal.show{display:block;}
+  .step-nav{display:flex;justify-content:space-between;margin-top:14px;}
+  /* Quiz */
+  .tier-set{display:flex;gap:8px;margin-bottom:14px;}
+  .tier-btn{flex:1;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--dim);cursor:pointer;font-weight:600;font-size:0.82rem;}
+  .tier-btn.active{border-color:var(--violet);color:var(--violet);background:rgba(167,139,250,0.08);}
+  .q-progress{font-family:var(--mono);font-size:0.75rem;color:var(--dim);margin-bottom:6px;}
+  .q-prompt{font-size:0.92rem;line-height:1.55;margin-bottom:14px;}
+  .q-choices{display:flex;flex-direction:column;gap:8px;}
+  .q-choice{
+    background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 14px;
+    font-size:0.85rem;cursor:pointer;line-height:1.4;
+  }
+  .q-choice:hover{border-color:rgba(255,255,255,0.2);}
+  .q-choice.correct{border-color:var(--good);background:rgba(74,222,128,0.12);}
+  .q-choice.wrong{border-color:var(--bad);background:rgba(251,113,133,0.12);}
+  .q-choice.disabled{cursor:default;}
+  .q-explain{margin-top:12px;padding:10px 14px;border-radius:8px;border-left:3px solid var(--teal);background:var(--panel2);font-size:0.83rem;line-height:1.55;display:none;}
+  .q-explain.show{display:block;}
+  .q-score{font-family:var(--mono);font-size:0.85rem;color:var(--amber);margin-bottom:10px;}
+  .q-nextbtn{margin-top:12px;}
+  .footer{color:var(--dim2);font-size:0.72rem;text-align:center;margin-top:30px;}
+  @media (max-width:700px){
+    .row{flex-direction:column;}
+    .tabs{gap:5px;}
+    .tab-btn{padding:7px 12px;font-size:0.8rem;}
+    h1{font-size:1.15rem;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hd">
+    <span class="wordmark">Lava Lab Science</span>
+    <h1>3.5 &middot; Diffusion &amp; Effusion Simulator</h1>
+    <div class="sub">AP Chemistry &middot; Unit 3, Topic 3.5 (Kinetic Molecular Theory) &middot; Explore how molar mass and temperature govern particle speed &mdash; watch gases meet and react down a tube, then race them through a pinhole.</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-mode="explore">Explore</button>
+    <button class="tab-btn" data-mode="guided">Guided Lab</button>
+    <button class="tab-btn" data-mode="quiz">Tiered Quiz</button>
+  </div>
+
+  <!-- ============ EXPLORE ============ -->
+  <div id="mode-explore" class="mode-panel">
+    <div class="sec-tabs">
+      <button class="sec-btn active" data-sec="tube">Diffusion Tube</button>
+      <button class="sec-btn" data-sec="effusion">Effusion Race</button>
+    </div>
+
+    <div id="sec-explore-tube" class="sec-panel">
+      <div class="panel">
+        <label class="lbl">Reacting pair</label>
+        <div class="pair-tabs" id="et-pair-tabs">
+          <button class="pair-btn active" data-pair="HCl">NH&#8323; + HCl &rarr; NH&#8324;Cl</button>
+          <button class="pair-btn" data-pair="HBr">NH&#8323; + HBr &rarr; NH&#8324;Br</button>
+          <button class="pair-btn" data-pair="HI">NH&#8323; + HI &rarr; NH&#8324;I</button>
+        </div>
+        <div class="ctrl-group">
+          <div class="ctrl-item">
+            <label class="lbl">Temperature: <span id="et-temp-val">298</span> K</label>
+            <input type="range" id="et-temp" min="250" max="420" step="2" value="298" style="width:100%;accent-color:var(--teal);">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="et-start">Start</button>
+          <button class="btn" id="et-pause">Pause</button>
+          <button class="btn" id="et-reset">Reset</button>
+          <div class="speed-set" id="et-speed-set">
+            <button class="speed-btn active" data-s="1">1&times;</button>
+            <button class="speed-btn" data-s="3">3&times;</button>
+            <button class="speed-btn" data-s="8">8&times;</button>
+          </div>
+        </div>
+        <canvas id="et-canvas" height="160"></canvas>
+        <div id="et-banner" class="banner rx">Select a pair to begin.</div>
+        <div class="stat-strip">
+          <div class="stat-chip"><span class="k">NH&#8323; front</span><span id="et-s-left">&mdash;</span></div>
+          <div class="stat-chip"><span class="k">Acid gas front</span><span id="et-s-right">&mdash;</span></div>
+          <div class="stat-chip"><span class="k">Speed ratio (Graham's Law)</span><span id="et-s-ratio">&mdash;</span></div>
+          <div class="stat-chip"><span class="k">Theoretical reaction zone</span><span id="et-s-theory">&mdash;</span></div>
+          <div class="stat-chip"><span class="k">Simulated ring position</span><span id="et-s-ring">&mdash;</span></div>
+        </div>
+        <div class="note">The dashed line marks the reaction zone predicted by Graham's Law &mdash; a fixed location, not a random spot. Particles that reach it are consumed and added to the growing precipitate band, just as NH&#8323; and the acid gas keep feeding the ring in the real demo once it forms.</div>
+      </div>
+    </div>
+
+    <div id="sec-explore-effusion" class="sec-panel" style="display:none;">
+      <div class="panel">
+        <label class="lbl">Choose 2&ndash;4 gases to load into the chamber</label>
+        <div class="gas-check-list" id="ee-gas-checks"></div>
+        <div class="ctrl-group">
+          <div class="ctrl-item">
+            <label class="lbl">Temperature: <span id="ee-temp-val">298</span> K</label>
+            <input type="range" id="ee-temp" min="250" max="420" step="2" value="298" style="width:100%;accent-color:var(--violet);">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="ee-start">Start</button>
+          <button class="btn" id="ee-pause">Pause</button>
+          <button class="btn" id="ee-reset">Reset</button>
+          <div class="speed-set" id="ee-speed-set">
+            <button class="speed-btn active" data-s="1">1&times;</button>
+            <button class="speed-btn" data-s="3">3&times;</button>
+            <button class="speed-btn" data-s="8">8&times;</button>
+          </div>
+        </div>
+        <canvas id="ee-canvas" height="180"></canvas>
+        <canvas id="ee-chart" height="110" style="margin-top:8px;"></canvas>
+        <table class="stats-tbl" id="ee-stats-tbl"></table>
+        <div class="note">Each particle's speed is drawn from a Maxwell&ndash;Boltzmann-like spread around its gas's average KMT speed. Only particles that reach the pinhole while moving outward escape into the collection zone &mdash; exactly like effusion through a small orifice.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ GUIDED ============ -->
+  <div id="mode-guided" class="mode-panel" style="display:none;">
+    <div class="panel">
+      <div class="step-progress" id="gd-progress">Step 1 of 6</div>
+      <div id="gd-body"></div>
+      <div class="step-nav">
+        <button class="btn" id="gd-prev">&larr; Back</button>
+        <button class="btn primary" id="gd-next">Next &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ QUIZ ============ -->
+  <div id="mode-quiz" class="mode-panel" style="display:none;">
+    <div class="panel">
+      <div class="tier-set">
+        <button class="tier-btn active" data-t="1">Tier 1 &middot; Conceptual</button>
+        <button class="tier-btn" data-t="2">Tier 2 &middot; Calculation</button>
+        <button class="tier-btn" data-t="3">Tier 3 &middot; AP Reasoning</button>
+      </div>
+      <div class="q-score" id="q-score">Score: 0 / 0</div>
+      <div class="q-progress" id="q-progress">Question 1 of 5</div>
+      <div class="q-prompt" id="q-prompt"></div>
+      <div class="q-choices" id="q-choices"></div>
+      <div class="q-explain" id="q-explain"></div>
+      <button class="btn primary q-nextbtn" id="q-next" style="display:none;">Next Question &rarr;</button>
+    </div>
+  </div>
+
+  <div class="footer">Lava Lab Science &middot; AP Chemistry Interactive Toolkit &middot; Topic 3.5</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- Gas data ---------------- */
+const GASES = {
+  He:  {id:'He',  name:'Helium',            formula:'He',   M:4.00,   color:'#2dd4bf'},
+  CH4: {id:'CH4', name:'Methane',           formula:'CH\u2084', M:16.04, color:'#c084fc'},
+  NH3: {id:'NH3', name:'Ammonia',           formula:'NH\u2083', M:17.03, color:'#a78bfa'},
+  N2:  {id:'N2',  name:'Nitrogen',          formula:'N\u2082',  M:28.01, color:'#38bdf8'},
+  O2:  {id:'O2',  name:'Oxygen',            formula:'O\u2082',  M:32.00, color:'#4ade80'},
+  HCl: {id:'HCl', name:'Hydrogen Chloride', formula:'HCl',  M:36.46,  color:'#fbbf24'},
+  Ar:  {id:'Ar',  name:'Argon',             formula:'Ar',   M:39.95,  color:'#94a3b8'},
+  CO2: {id:'CO2', name:'Carbon Dioxide',    formula:'CO\u2082', M:44.01, color:'#fb923c'},
+  HBr: {id:'HBr', name:'Hydrogen Bromide',  formula:'HBr',  M:80.91,  color:'#fb7185'},
+  HI:  {id:'HI',  name:'Hydrogen Iodide',   formula:'HI',   M:127.91, color:'#f472b6'}
+};
+const GAS_ORDER = ['He','CH4','NH3','N2','O2','HCl','Ar','CO2','HBr','HI'];
+
+function rkey(a,b){ return [a,b].sort().join('_'); }
+const REACTIONS = {};
+REACTIONS[rkey('NH3','HCl')] = {formula:'NH\u2084Cl', name:'ammonium chloride'};
+REACTIONS[rkey('NH3','HBr')] = {formula:'NH\u2084Br', name:'ammonium bromide'};
+REACTIONS[rkey('NH3','HI')]  = {formula:'NH\u2084I',  name:'ammonium iodide'};
+function reactionOf(a,b){ return REACTIONS[rkey(a,b)] || null; }
+
+function fmtPct(x){ return (x*100).toFixed(1) + '%'; }
+function ringFractionFromLeft(mLeft, mRight){
+  // d_left / d_right = sqrt(mRight/mLeft); fraction of tube from left end:
+  const ratio = Math.sqrt(mRight/mLeft);
+  return ratio/(ratio+1);
+}
+
+/* ---------------- Tube Simulation ---------------- */
+function TubeSim(canvas, onStats){
+  this.canvas = canvas; this.ctx = canvas.getContext('2d');
+  this.leftId = 'NH3'; this.rightId = 'HCl'; this.T = 298; this.speedMult = 1;
+  this.running = false; this.particles = []; this.precip = []; this.spawnTimer = 0; this.time = 0;
+  this.onStats = onStats || function(){};
+  this._raf = null;
+  this.resize();
+}
+TubeSim.prototype.resize = function(){
+  const r = this.canvas.getBoundingClientRect();
+  this.W = Math.max(200, r.width); this.H = this.canvas.height;
+  this.canvas.width = this.W; this.canvas.height = this.H;
+};
+TubeSim.prototype.setGases = function(l,r){
+  this.leftId=l; this.rightId=r;
+  const rx = reactionOf(l,r);
+  this.reacting = !!rx;
+  this.meetingFrac = rx ? ringFractionFromLeft(GASES[l].M, GASES[r].M) : null;
+  this.reset();
+};
+TubeSim.prototype.setTemp = function(T){ this.T = T; };
+TubeSim.prototype.setSpeedMult = function(m){ this.speedMult = m; };
+TubeSim.prototype.gasSpeed = function(id){
+  const g = GASES[id]; return 0.6 * Math.sqrt(this.T / g.M);
+};
+TubeSim.prototype.start = function(){ this.running = true; if(!this._raf) this.loop(); };
+TubeSim.prototype.pause = function(){ this.running = false; };
+TubeSim.prototype.reset = function(){
+  this.particles = []; this.precip = []; this.spawnTimer = 0; this.time = 0;
+  this.draw(); this.emitStats();
+};
+TubeSim.prototype.loop = function(){
+  const self = this;
+  this._raf = requestAnimationFrame(function(){ self.loop(); });
+  if(!this.running) return;
+  this.step(); this.draw();
+};
+TubeSim.prototype.step = function(){
+  const dt = this.speedMult; this.time += dt;
+  this.spawnTimer -= dt;
+  if(this.spawnTimer <= 0){
+    this.spawnTimer = 5;
+    this.particles.push({gas:this.leftId,  x:16, y:this.H/2+(Math.random()-0.5)*this.H*0.55, dir:1,  ph:Math.random()*6.28});
+    this.particles.push({gas:this.rightId, x:this.W-16, y:this.H/2+(Math.random()-0.5)*this.H*0.55, dir:-1, ph:Math.random()*6.28});
+  }
+  for(let i=0;i<this.particles.length;i++){
+    const p = this.particles[i];
+    const v = this.gasSpeed(p.gas) * dt;
+    p.x += v * p.dir; p.ph += 0.06*dt; p.y += Math.sin(p.ph)*0.35*dt;
+    if(p.y<8) p.y=8; if(p.y>this.H-8) p.y=this.H-8;
+  }
+  if(this.reacting){
+    const mx = this.meetingFrac * this.W;
+    for(let i=this.particles.length-1;i>=0;i--){
+      const p = this.particles[i];
+      if((p.gas===this.leftId && p.x>=mx) || (p.gas===this.rightId && p.x<=mx)){
+        this.precip.push({x: mx + (Math.random()-0.5)*9, y: p.y});
+        this.particles.splice(i,1);
+      }
+    }
+  }
+  this.particles = this.particles.filter(function(p){ return p.x>-24 && p.x<this.W+24; }.bind(this));
+  this.emitStats();
+};
+TubeSim.prototype.emitStats = function(){
+  let leftFront = 0, rightFront = this.W;
+  for(let i=0;i<this.particles.length;i++){
+    const p = this.particles[i];
+    if(p.gas===this.leftId) leftFront = Math.max(leftFront, p.x);
+    if(p.gas===this.rightId) rightFront = Math.min(rightFront, p.x);
+  }
+  let ringMean = null;
+  if(this.precip.length){
+    let s=0; for(let i=0;i<this.precip.length;i++) s+=this.precip[i].x;
+    ringMean = s/this.precip.length/this.W;
+  }
+  this.onStats({
+    leftPct: leftFront/this.W, rightPct: rightFront/this.W,
+    precipCount: this.precip.length, ringPct: ringMean,
+    leftId: this.leftId, rightId: this.rightId
+  });
+};
+TubeSim.prototype.draw = function(){
+  const ctx = this.ctx, W = this.W, H = this.H;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  for(let x=0;x<W;x+=24){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  ctx.fillRect(0,0,10,H); ctx.fillRect(W-10,0,10,H);
+  const lg = GASES[this.leftId], rg = GASES[this.rightId];
+  ctx.font = '11px monospace';
+  ctx.fillStyle = lg.color; ctx.fillText(lg.formula, 6, 14);
+  ctx.fillStyle = rg.color; ctx.textAlign = 'right'; ctx.fillText(rg.formula, W-6, 14); ctx.textAlign='left';
+  if(this.reacting){
+    const mx = this.meetingFrac * W;
+    ctx.save();
+    ctx.setLineDash([5,5]);
+    ctx.strokeStyle = 'rgba(251,191,36,0.55)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(mx,0); ctx.lineTo(mx,H); ctx.stroke();
+    ctx.restore();
+    ctx.font = '10px monospace'; ctx.fillStyle = 'rgba(251,191,36,0.9)'; ctx.textAlign='center';
+    ctx.fillText((this.meetingFrac*100).toFixed(1)+'%', mx, H-4);
+    ctx.textAlign='left';
+  }
+  for(let i=0;i<this.particles.length;i++){
+    const p = this.particles[i];
+    ctx.fillStyle = GASES[p.gas].color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,3,0,6.29); ctx.fill();
+  }
+  if(this.precip.length){
+    ctx.fillStyle = 'rgba(241,245,249,0.9)';
+    for(let i=0;i<this.precip.length;i++){
+      const d = this.precip[i];
+      ctx.beginPath(); ctx.arc(d.x,d.y,2.1,0,6.29); ctx.fill();
+    }
+  }
+};
+
+/* ---------------- Effusion Simulation ---------------- */
+function EffusionSim(canvas, chartCanvas, onStats){
+  this.canvas = canvas; this.ctx = canvas.getContext('2d');
+  this.chartCanvas = chartCanvas; this.chartCtx = chartCanvas.getContext('2d');
+  this.T = 298; this.speedMult = 1; this.running = false;
+  this.ids = []; this.particles = []; this.escaped = {}; this.history = {}; this.perGas = 24;
+  this.onStats = onStats || function(){};
+  this._raf = null;
+  this.resize();
+}
+EffusionSim.prototype.resize = function(){
+  const r = this.canvas.getBoundingClientRect();
+  this.W = Math.max(200, r.width); this.H = this.canvas.height;
+  this.canvas.width = this.W; this.canvas.height = this.H;
+  const r2 = this.chartCanvas.getBoundingClientRect();
+  this.chartW = Math.max(200, r2.width); this.chartH = this.chartCanvas.height;
+  this.chartCanvas.width = this.chartW; this.chartCanvas.height = this.chartH;
+};
+EffusionSim.prototype.setTemp = function(T){ this.T = T; };
+EffusionSim.prototype.setSpeedMult = function(m){ this.speedMult = m; };
+EffusionSim.prototype.spawnParticle = function(id){
+  const g = GASES[id];
+  const speed = 0.55*Math.sqrt(this.T/g.M)*(0.55+Math.random()*0.9);
+  const ang = Math.random()*6.283;
+  const chamberW = this.W*0.62;
+  const margin = 14;
+  return {gas:id, x:margin+Math.random()*(chamberW-2*margin), y:margin+Math.random()*(this.H-2*margin),
+           vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed};
+};
+EffusionSim.prototype.setGasSet = function(ids){
+  this.ids = ids.slice(); this.particles = []; this.escaped = {}; this.history = {}; this.time = 0;
+  for(let i=0;i<this.ids.length;i++){
+    const id = this.ids[i];
+    this.escaped[id] = 0; this.history[id] = [{t:0,c:0}];
+    for(let k=0;k<this.perGas;k++) this.particles.push(this.spawnParticle(id));
+  }
+  this.draw(); this.drawChart(); this.emitStats();
+};
+EffusionSim.prototype.start = function(){ this.running = true; if(!this._raf) this.loop(); };
+EffusionSim.prototype.pause = function(){ this.running = false; };
+EffusionSim.prototype.reset = function(){ if(this.ids.length) this.setGasSet(this.ids); };
+EffusionSim.prototype.loop = function(){
+  const self = this;
+  this._raf = requestAnimationFrame(function(){ self.loop(); });
+  if(!this.running) return;
+  this.step(); this.draw(); this.drawChart();
+};
+EffusionSim.prototype.step = function(){
+  const dt = this.speedMult; this.time += dt;
+  const chamberW = this.W*0.62, gapY0 = this.H*0.40, gapY1 = this.H*0.60;
+  for(let i=this.particles.length-1;i>=0;i--){
+    const p = this.particles[i];
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    if(p.y<6){p.y=6; p.vy*=-1;}
+    if(p.y>this.H-6){p.y=this.H-6; p.vy*=-1;}
+    if(p.x<6){p.x=6; p.vx*=-1;}
+    if(p.x>=chamberW-4){
+      if(p.y>gapY0 && p.y<gapY1 && p.vx>0){
+        this.escaped[p.gas] = (this.escaped[p.gas]||0)+1;
+        this.history[p.gas].push({t:this.time, c:this.escaped[p.gas]});
+        this.particles.splice(i,1); continue;
+      } else if(p.x>=chamberW-4){
+        p.x = chamberW-5; p.vx *= -1;
+      }
+    }
+  }
+  this.emitStats();
+};
+EffusionSim.prototype.emitStats = function(){
+  const out = {};
+  for(let i=0;i<this.ids.length;i++){
+    const id = this.ids[i];
+    out[id] = {escaped:this.escaped[id]||0, total:this.perGas};
+  }
+  this.onStats(out, this.time);
+};
+EffusionSim.prototype.draw = function(){
+  const ctx = this.ctx, W=this.W, H=this.H, chamberW = W*0.62, gapY0=H*0.40, gapY1=H*0.60;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth=2;
+  ctx.strokeRect(2,2,chamberW-2,H-4);
+  ctx.clearRect(chamberW-1, gapY0, 4, gapY1-gapY0);
+  ctx.fillStyle = 'rgba(45,212,191,0.05)';
+  ctx.fillRect(chamberW, 0, W-chamberW, H);
+  ctx.font = '10px monospace'; ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.fillText('chamber', 8, 14);
+  ctx.fillText('collected', chamberW+8, 14);
+  for(let i=0;i<this.particles.length;i++){
+    const p = this.particles[i];
+    ctx.fillStyle = GASES[p.gas].color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,3,0,6.29); ctx.fill();
+  }
+  // faint dots for escaped, scattered in collection zone for visual sense of accumulation
+  let idx=0;
+  for(let i=0;i<this.ids.length;i++){
+    const id=this.ids[i], n=this.escaped[id]||0;
+    ctx.fillStyle = GASES[id].color;
+    ctx.globalAlpha = 0.55;
+    for(let k=0;k<Math.min(n,40);k++){
+      const gx = chamberW + 14 + ((idx*17)%(W-chamberW-24));
+      const gy = 10 + ((idx*23)%(H-20));
+      ctx.beginPath(); ctx.arc(gx,gy,2.4,0,6.29); ctx.fill();
+      idx++;
+    }
+    ctx.globalAlpha = 1;
+  }
+};
+EffusionSim.prototype.drawChart = function(){
+  const ctx = this.chartCtx, W=this.chartW, H=this.chartH;
+  ctx.clearRect(0,0,W,H);
+  const padL=34, padB=16, padT=8, padR=8;
+  ctx.strokeStyle='rgba(255,255,255,0.14)';
+  ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,H-padB); ctx.lineTo(W-padR,H-padB); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='9px monospace';
+  ctx.fillText('100%', 2, padT+8);
+  ctx.fillText('0%', 10, H-padB);
+  ctx.fillText('time \u2192', W-40, H-4);
+  const maxT = Math.max(20, this.time);
+  for(let i=0;i<this.ids.length;i++){
+    const id = this.ids[i]; const hist = this.history[id]||[];
+    ctx.strokeStyle = GASES[id].color; ctx.lineWidth=1.6; ctx.beginPath();
+    for(let k=0;k<hist.length;k++){
+      const pt = hist[k];
+      const x = padL + (pt.t/maxT)*(W-padL-padR);
+      const y = (H-padB) - (pt.c/this.perGas)*(H-padB-padT);
+      if(k===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    // extend line flat to current time
+    const lastY = hist.length ? (H-padB) - (hist[hist.length-1].c/this.perGas)*(H-padB-padT) : (H-padB);
+    ctx.lineTo(padL + (this.time/maxT)*(W-padL-padR), lastY);
+    ctx.stroke();
+  }
+};
+
+/* ---------------- Wiring: Explore Tube ---------------- */
+const etCanvas = document.getElementById('et-canvas');
+const etTemp = document.getElementById('et-temp');
+const etTempVal = document.getElementById('et-temp-val');
+const etBanner = document.getElementById('et-banner');
+const etSLeft = document.getElementById('et-s-left');
+const etSRight = document.getElementById('et-s-right');
+const etSRatio = document.getElementById('et-s-ratio');
+const etSTheory = document.getElementById('et-s-theory');
+const etSRing = document.getElementById('et-s-ring');
+
+const PAIR_DEFS = {
+  HCl: {left:'NH3', right:'HCl'},
+  HBr: {left:'NH3', right:'HBr'},
+  HI:  {left:'NH3', right:'HI'}
+};
+
+function updateTubeBanner(leftId, rightId){
+  const rx = reactionOf(leftId, rightId);
+  const lg = GASES[leftId], rg = GASES[rightId];
+  const theoryFrac = ringFractionFromLeft(lg.M, rg.M);
+  etBanner.className = 'banner rx';
+  etBanner.innerHTML = lg.formula+'(g) + '+rg.formula+'(g) \u2192 <span class="formula">'+rx.formula+'(s)</span> ('+rx.name+') &mdash; forms at a fixed location, <b>'+fmtPct(theoryFrac)+'</b> of the way from the '+lg.formula+' end.';
+  const ratio = Math.sqrt(rg.M/lg.M);
+  etSRatio.textContent = 'v('+lg.formula+')/v('+rg.formula+') = '+ratio.toFixed(2);
+  etSTheory.textContent = fmtPct(theoryFrac)+' from '+lg.formula+' end';
+}
+
+const tubeSim = new TubeSim(etCanvas, function(stats){
+  etSLeft.textContent = fmtPct(stats.leftPct)+' ('+GASES[stats.leftId].formula+')';
+  etSRight.textContent = fmtPct(1-stats.rightPct)+' ('+GASES[stats.rightId].formula+')';
+  etSRing.textContent = stats.ringPct===null ? '\u2014' : fmtPct(stats.ringPct)+' from '+GASES[stats.leftId].formula+' end ('+stats.precipCount+' pts)';
+});
+
+function selectPair(key){
+  const def = PAIR_DEFS[key];
+  tubeSim.setGases(def.left, def.right);
+  updateTubeBanner(def.left, def.right);
+}
+document.querySelectorAll('#et-pair-tabs .pair-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('#et-pair-tabs .pair-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    selectPair(btn.dataset.pair);
+  });
+});
+selectPair('HCl');
+
+etTemp.addEventListener('input', function(){ etTempVal.textContent = etTemp.value; tubeSim.setTemp(parseFloat(etTemp.value)); });
+document.getElementById('et-start').addEventListener('click', function(){ tubeSim.start(); });
+document.getElementById('et-pause').addEventListener('click', function(){ tubeSim.pause(); });
+document.getElementById('et-reset').addEventListener('click', function(){ tubeSim.reset(); });
+document.getElementById('et-speed-set').addEventListener('click', function(e){
+  if(!e.target.classList.contains('speed-btn')) return;
+  document.querySelectorAll('#et-speed-set .speed-btn').forEach(function(b){b.classList.remove('active');});
+  e.target.classList.add('active'); tubeSim.setSpeedMult(parseFloat(e.target.dataset.s));
+});
+
+/* ---------------- Wiring: Explore Effusion ---------------- */
+const eeCanvas = document.getElementById('ee-canvas');
+const eeChart = document.getElementById('ee-chart');
+const eeChecks = document.getElementById('ee-gas-checks');
+const eeTemp = document.getElementById('ee-temp');
+const eeTempVal = document.getElementById('ee-temp-val');
+const eeStatsTbl = document.getElementById('ee-stats-tbl');
+
+let eeSelected = ['He','O2','CO2'];
+GAS_ORDER.forEach(function(id){
+  const g = GASES[id];
+  const wrap = document.createElement('label'); wrap.className='gcheck';
+  wrap.innerHTML = '<input type="checkbox" value="'+id+'" '+(eeSelected.indexOf(id)>-1?'checked':'')+'><span class="dot" style="background:'+g.color+'"></span>'+g.formula;
+  eeChecks.appendChild(wrap);
+});
+
+const effSim = new EffusionSim(eeCanvas, eeChart, function(stats, time){
+  let rows = '<tr><th>Gas</th><th>M (g/mol)</th><th>Escaped</th><th>Progress</th></tr>';
+  const ids = Object.keys(stats);
+  ids.sort(function(a,b){ return GASES[a].M - GASES[b].M; });
+  ids.forEach(function(id){
+    const g = GASES[id]; const s = stats[id]; const pct = s.total? (s.escaped/s.total*100) : 0;
+    rows += '<tr><td><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+g.color+';margin-right:6px;"></span>'+g.name+' ('+g.formula+')</td>'+
+            '<td>'+g.M.toFixed(2)+'</td><td>'+s.escaped+' / '+s.total+'</td>'+
+            '<td><div class="bar-track"><div class="bar-fill" style="width:'+pct.toFixed(0)+'%;background:'+g.color+'"></div></div></td></tr>';
+  });
+  eeStatsTbl.innerHTML = rows;
+});
+
+function refreshEffusionSet(){
+  const boxes = eeChecks.querySelectorAll('input[type=checkbox]');
+  boxes.forEach(function(b){ b.disabled = (!b.checked && eeSelected.length>=4); b.parentElement.classList.toggle('disabled', b.disabled); });
+  effSim.setGasSet(eeSelected);
+}
+eeChecks.addEventListener('change', function(e){
+  const v = e.target.value;
+  if(e.target.checked){ if(eeSelected.length<4) eeSelected.push(v); else { e.target.checked=false; return; } }
+  else { if(eeSelected.length>2) eeSelected = eeSelected.filter(function(x){return x!==v;}); else { e.target.checked=true; return; } }
+  refreshEffusionSet();
+});
+refreshEffusionSet();
+eeTemp.addEventListener('input', function(){ eeTempVal.textContent = eeTemp.value; effSim.setTemp(parseFloat(eeTemp.value)); });
+document.getElementById('ee-start').addEventListener('click', function(){ effSim.start(); });
+document.getElementById('ee-pause').addEventListener('click', function(){ effSim.pause(); });
+document.getElementById('ee-reset').addEventListener('click', function(){ effSim.reset(); });
+document.getElementById('ee-speed-set').addEventListener('click', function(e){
+  if(!e.target.classList.contains('speed-btn')) return;
+  document.querySelectorAll('#ee-speed-set .speed-btn').forEach(function(b){b.classList.remove('active');});
+  e.target.classList.add('active'); effSim.setSpeedMult(parseFloat(e.target.dataset.s));
+});
+
+/* ---------------- Mode / Section tab switching ---------------- */
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    document.querySelectorAll('.mode-panel').forEach(function(p){p.style.display='none';});
+    document.getElementById('mode-'+btn.dataset.mode).style.display='block';
+    tubeSim.pause(); effSim.pause();
+    if(btn.dataset.mode==='explore'){
+      tubeSim.resize(); tubeSim.draw(); effSim.resize(); effSim.draw(); effSim.drawChart();
+    } else if(btn.dataset.mode==='guided'){
+      gdResizeSims();
+    }
+  });
+});
+document.querySelectorAll('.sec-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.sec-btn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    document.getElementById('sec-explore-tube').style.display = btn.dataset.sec==='tube' ? 'block':'none';
+    document.getElementById('sec-explore-effusion').style.display = btn.dataset.sec==='effusion' ? 'block':'none';
+    tubeSim.pause(); effSim.pause();
+    if(btn.dataset.sec==='tube'){ tubeSim.resize(); tubeSim.draw(); }
+    else { effSim.resize(); effSim.draw(); effSim.drawChart(); }
+  });
+});
+window.addEventListener('resize', function(){
+  if(document.getElementById('sec-explore-tube').style.display!=='none') { tubeSim.resize(); tubeSim.draw(); }
+  if(document.getElementById('sec-explore-effusion').style.display==='block'){ effSim.resize(); effSim.draw(); effSim.drawChart(); }
+});
+
+/* ================= GUIDED LAB ================= */
+const gdBody = document.getElementById('gd-body');
+const gdProgress = document.getElementById('gd-progress');
+const gdPrev = document.getElementById('gd-prev');
+const gdNext = document.getElementById('gd-next');
+let gdStep = 0;
+const GD_TOTAL = 6;
+
+let gdTubeSim = null, gdEffSim = null;
+function gdResizeSims(){
+  if(gdTubeSim){ gdTubeSim.resize(); gdTubeSim.draw(); }
+  if(gdEffSim){ gdEffSim.resize(); gdEffSim.draw(); gdEffSim.drawChart(); }
+}
+
+function gdMakeTubeBlock(id, left, right){
+  return '<canvas id="'+id+'" height="140"></canvas>'+
+    '<div class="btn-row" style="margin-top:8px;">'+
+      '<button class="btn primary" data-act="start">Start</button>'+
+      '<button class="btn" data-act="pause">Pause</button>'+
+      '<button class="btn" data-act="reset">Reset</button>'+
+    '</div>'+
+    '<div class="stat-strip">'+
+      '<div class="stat-chip"><span class="k">'+GASES[left].formula+' front</span><span data-stat="left">\u2014</span></div>'+
+      '<div class="stat-chip"><span class="k">'+GASES[right].formula+' front</span><span data-stat="right">\u2014</span></div>'+
+      '<div class="stat-chip"><span class="k">Ring position</span><span data-stat="ring">\u2014</span></div>'+
+    '</div>';
+}
+function gdMakeEffBlock(){
+  return '<canvas id="gd-eff-canvas" height="150"></canvas>'+
+    '<canvas id="gd-eff-chart" height="100" style="margin-top:6px;"></canvas>'+
+    '<div class="btn-row" style="margin-top:8px;">'+
+      '<button class="btn primary" data-act="start">Start</button>'+
+      '<button class="btn" data-act="pause">Pause</button>'+
+      '<button class="btn" data-act="reset">Reset</button>'+
+    '</div>'+
+    '<table class="stats-tbl" id="gd-eff-tbl"></table>';
+}
+
+function bindTubeBlockButtons(container, sim){
+  container.querySelectorAll('[data-act]').forEach(function(b){
+    b.addEventListener('click', function(){
+      if(b.dataset.act==='start') sim.start();
+      if(b.dataset.act==='pause') sim.pause();
+      if(b.dataset.act==='reset') sim.reset();
+    });
+  });
+}
+
+function renderGuidedStep(){
+  gdProgress.textContent = 'Step '+(gdStep+1)+' of '+GD_TOTAL;
+  gdPrev.disabled = (gdStep===0);
+  gdNext.textContent = (gdStep===GD_TOTAL-1) ? 'Restart \u21ba' : 'Next \u2192';
+  gdTubeSim = null; gdEffSim = null;
+  let html = '';
+
+  if(gdStep===0){
+    html = '<div class="step-title">Step 1 &middot; The classic tube demo</div>'+
+      '<div class="step-text">Cotton swabs soaked in concentrated ammonia (NH\u2083) and hydrochloric acid (HCl) are placed at opposite ends of a tube. Both gases diffuse toward each other. <b>Predict:</b> will the white ring of ammonium chloride form exactly in the middle of the tube?</div>'+
+      '<div class="predict-opts" id="gd-opts">'+
+        '<div class="predict-opt" data-v="mid">Yes &mdash; both gases are released at the same time, so they meet in the middle.</div>'+
+        '<div class="predict-opt" data-v="hcl">No &mdash; it forms closer to the HCl end, because NH\u2083 is lighter and moves faster.</div>'+
+        '<div class="predict-opt" data-v="nh3">No &mdash; it forms closer to the NH\u2083 end, because HCl is more reactive.</div>'+
+      '</div>'+
+      '<div class="reveal" id="gd-reveal">Correct answer: <b>closer to the HCl end.</b> At the same temperature, every gas has the same average kinetic energy (KE = &frac12;mv&sup2;). Since NH\u2083 (M=17.03) has less mass than HCl (M=36.46), it must have a larger average velocity to have the same KE &mdash; so it travels farther before the two fronts meet.</div>'+
+      gdMakeTubeBlock('gd-tube-1','NH3','HCl');
+    gdBody.innerHTML = html;
+    document.querySelectorAll('#gd-opts .predict-opt').forEach(function(opt){
+      opt.addEventListener('click', function(){
+        document.querySelectorAll('#gd-opts .predict-opt').forEach(function(o){o.classList.remove('selected','correct','wrong');});
+        opt.classList.add(opt.dataset.v==='hcl' ? 'correct' : 'wrong');
+        document.getElementById('gd-reveal').classList.add('show');
+      });
+    });
+    const c1 = document.getElementById('gd-tube-1');
+    gdTubeSim = new TubeSim(c1, function(stats){
+      const strip = document.getElementById('gd-tube-1').parentElement;
+      strip.querySelector('[data-stat="left"]').textContent = fmtPct(stats.leftPct);
+      strip.querySelector('[data-stat="right"]').textContent = fmtPct(1-stats.rightPct);
+      strip.querySelector('[data-stat="ring"]').textContent = stats.ringPct===null?'\u2014':fmtPct(stats.ringPct)+' from NH\u2083 end';
+    });
+    gdTubeSim.setGases('NH3','HCl');
+    bindTubeBlockButtons(gdBody, gdTubeSim);
+  }
+
+  else if(gdStep===1){
+    const frac = ringFractionFromLeft(GASES.NH3.M, GASES.HCl.M);
+    html = '<div class="step-title">Step 2 &middot; Predict the number</div>'+
+      '<div class="step-text">Using Graham\u2019s Law reasoning (rate<sub>NH\u2083</sub>/rate<sub>HCl</sub> = &radic;(M<sub>HCl</sub>/M<sub>NH\u2083</sub>)), roughly what fraction of the tube&rsquo;s length (measured from the NH\u2083 end) should the ring form at?</div>'+
+      '<div class="predict-opts" id="gd-opts2">'+
+        '<div class="predict-opt" data-v="50">50% (the exact middle)</div>'+
+        '<div class="predict-opt" data-v="59">About 59% (NH\u2083 covers more ground)</div>'+
+        '<div class="predict-opt" data-v="75">About 75%</div>'+
+      '</div>'+
+      '<div class="reveal" id="gd-reveal2">&radic;(36.46/17.03) = 1.46. Ring fraction from the NH\u2083 end = 1.46 / (1.46+1) = <b>'+fmtPct(frac)+'</b>. Run the simulation below and check the &ldquo;Ring position&rdquo; readout against this prediction.</div>'+
+      gdMakeTubeBlock('gd-tube-2','NH3','HCl');
+    gdBody.innerHTML = html;
+    document.querySelectorAll('#gd-opts2 .predict-opt').forEach(function(opt){
+      opt.addEventListener('click', function(){
+        document.querySelectorAll('#gd-opts2 .predict-opt').forEach(function(o){o.classList.remove('selected','correct','wrong');});
+        opt.classList.add(opt.dataset.v==='59' ? 'correct' : 'wrong');
+        document.getElementById('gd-reveal2').classList.add('show');
+      });
+    });
+    const c2 = document.getElementById('gd-tube-2');
+    gdTubeSim = new TubeSim(c2, function(stats){
+      const strip = document.getElementById('gd-tube-2').parentElement;
+      strip.querySelector('[data-stat="left"]').textContent = fmtPct(stats.leftPct);
+      strip.querySelector('[data-stat="right"]').textContent = fmtPct(1-stats.rightPct);
+      strip.querySelector('[data-stat="ring"]').textContent = stats.ringPct===null?'\u2014':fmtPct(stats.ringPct)+' from NH\u2083 end';
+    });
+    gdTubeSim.setGases('NH3','HCl');
+    bindTubeBlockButtons(gdBody, gdTubeSim);
+  }
+
+  else if(gdStep===2){
+    html = '<div class="step-title">Step 3 &middot; Swap in a heavier acid gas</div>'+
+      '<div class="step-text">Now replace HCl with the heavier hydrogen bromide, HBr (M=80.91 g/mol). <b>Predict:</b> compared to the NH\u2083/HCl ring, will the new NH\u2083/HBr ring form closer to the NH\u2083 end, or farther from it?</div>'+
+      '<div class="predict-opts" id="gd-opts3">'+
+        '<div class="predict-opt" data-v="far">Farther from the NH\u2083 end (closer to the HBr end) &mdash; HBr is heavier and even slower.</div>'+
+        '<div class="predict-opt" data-v="close">Closer to the NH\u2083 end &mdash; a heavier gas pushes the ring back.</div>'+
+        '<div class="predict-opt" data-v="same">In the same place &mdash; ring position doesn\u2019t depend on the right-side gas.</div>'+
+      '</div>'+
+      '<div class="reveal" id="gd-reveal3">Correct: <b>farther from the NH\u2083 end.</b> HBr is slower than HCl, so it covers even less distance before meeting NH\u2083 &mdash; the meeting point shifts deeper into HBr territory, closer to the HBr end.</div>'+
+      gdMakeTubeBlock('gd-tube-3','NH3','HBr');
+    gdBody.innerHTML = html;
+    document.querySelectorAll('#gd-opts3 .predict-opt').forEach(function(opt){
+      opt.addEventListener('click', function(){
+        document.querySelectorAll('#gd-opts3 .predict-opt').forEach(function(o){o.classList.remove('selected','correct','wrong');});
+        opt.classList.add(opt.dataset.v==='far' ? 'correct' : 'wrong');
+        document.getElementById('gd-reveal3').classList.add('show');
+      });
+    });
+    const c3 = document.getElementById('gd-tube-3');
+    gdTubeSim = new TubeSim(c3, function(stats){
+      const strip = document.getElementById('gd-tube-3').parentElement;
+      strip.querySelector('[data-stat="left"]').textContent = fmtPct(stats.leftPct);
+      strip.querySelector('[data-stat="right"]').textContent = fmtPct(1-stats.rightPct);
+      strip.querySelector('[data-stat="ring"]').textContent = stats.ringPct===null?'\u2014':fmtPct(stats.ringPct)+' from NH\u2083 end';
+    });
+    gdTubeSim.setGases('NH3','HBr');
+    bindTubeBlockButtons(gdBody, gdTubeSim);
+  }
+
+  else if(gdStep===3){
+    html = '<div class="step-title">Step 4 &middot; A non-reacting control</div>'+
+      '<div class="step-text">Now try helium (He) against argon (Ar) &mdash; two noble gases that do not react. <b>Predict:</b> what happens where their fronts meet?</div>'+
+      '<div class="predict-opts" id="gd-opts4">'+
+        '<div class="predict-opt" data-v="none">No solid forms &mdash; the gases simply interdiffuse and mix, but He still travels farther because it\u2019s lighter.</div>'+
+        '<div class="predict-opt" data-v="ring">A white ring still forms, just like NH\u2083/HCl.</div>'+
+        '<div class="predict-opt" data-v="stop">The gases stop moving once they touch.</div>'+
+      '</div>'+
+      '<div class="reveal" id="gd-reveal4">Correct: <b>no solid forms.</b> Diffusion rate differences (governed by molar mass) exist for every gas pair, reacting or not &mdash; but a visible precipitate requires an actual chemical reaction. Watch the front readouts: He still outruns Ar even though nothing precipitates.</div>'+
+      gdMakeTubeBlock('gd-tube-4','He','Ar');
+    gdBody.innerHTML = html;
+    document.querySelectorAll('#gd-opts4 .predict-opt').forEach(function(opt){
+      opt.addEventListener('click', function(){
+        document.querySelectorAll('#gd-opts4 .predict-opt').forEach(function(o){o.classList.remove('selected','correct','wrong');});
+        opt.classList.add(opt.dataset.v==='none' ? 'correct' : 'wrong');
+        document.getElementById('gd-reveal4').classList.add('show');
+      });
+    });
+    const c4 = document.getElementById('gd-tube-4');
+    gdTubeSim = new TubeSim(c4, function(stats){
+      const strip = document.getElementById('gd-tube-4').parentElement;
+      strip.querySelector('[data-stat="left"]').textContent = fmtPct(stats.leftPct);
+      strip.querySelector('[data-stat="right"]').textContent = fmtPct(1-stats.rightPct);
+      strip.querySelector('[data-stat="ring"]').textContent = '\u2014 (no reaction)';
+    });
+    gdTubeSim.setGases('He','Ar');
+    bindTubeBlockButtons(gdBody, gdTubeSim);
+  }
+
+  else if(gdStep===4){
+    html = '<div class="step-title">Step 5 &middot; Effusion race</div>'+
+      '<div class="step-text">Three gases &mdash; He (4.00), N\u2082 (28.01), and CO\u2082 (44.01 g/mol) &mdash; share a chamber with a small pinhole leading to vacuum. <b>Predict the finishing order</b> (fastest to slowest to fully escape), then run the race.</div>'+
+      '<div class="predict-opts" id="gd-opts5">'+
+        '<div class="predict-opt" data-v="correct">He first, then N\u2082, then CO\u2082 &mdash; lighter gases effuse faster.</div>'+
+        '<div class="predict-opt" data-v="rev">CO\u2082 first, then N\u2082, then He &mdash; heavier gases have more momentum.</div>'+
+        '<div class="predict-opt" data-v="tie">All three finish at about the same time &mdash; mass doesn\u2019t affect effusion.</div>'+
+      '</div>'+
+      '<div class="reveal" id="gd-reveal5">Correct: <b>He, then N\u2082, then CO\u2082.</b> Rate of effusion &prop; average speed &prop; 1/&radic;M, so the lightest gas empties out first every time.</div>'+
+      gdMakeEffBlock();
+    gdBody.innerHTML = html;
+    document.querySelectorAll('#gd-opts5 .predict-opt').forEach(function(opt){
+      opt.addEventListener('click', function(){
+        document.querySelectorAll('#gd-opts5 .predict-opt').forEach(function(o){o.classList.remove('selected','correct','wrong');});
+        opt.classList.add(opt.dataset.v==='correct' ? 'correct' : 'wrong');
+        document.getElementById('gd-reveal5').classList.add('show');
+      });
+    });
+    const ce = document.getElementById('gd-eff-canvas'), cc = document.getElementById('gd-eff-chart');
+    gdEffSim = new EffusionSim(ce, cc, function(stats){
+      let rows = '<tr><th>Gas</th><th>M</th><th>Escaped</th><th>Progress</th></tr>';
+      const ids = Object.keys(stats).sort(function(a,b){return GASES[a].M-GASES[b].M;});
+      ids.forEach(function(id){
+        const g=GASES[id], s=stats[id], pct = s.total?(s.escaped/s.total*100):0;
+        rows += '<tr><td>'+g.formula+'</td><td>'+g.M.toFixed(2)+'</td><td>'+s.escaped+'/'+s.total+'</td>'+
+          '<td><div class="bar-track"><div class="bar-fill" style="width:'+pct.toFixed(0)+'%;background:'+g.color+'"></div></div></td></tr>';
+      });
+      document.getElementById('gd-eff-tbl').innerHTML = rows;
+    });
+    gdEffSim.setGasSet(['He','N2','CO2']);
+    bindTubeBlockButtons(gdBody, gdEffSim);
+  }
+
+  else if(gdStep===5){
+    html = '<div class="step-title">Step 6 &middot; Do the calculation</div>'+
+      '<div class="step-text">Gas X takes 30 s to completely effuse from a container. Under identical conditions, an unknown gas Y takes 60 s. If gas X is helium (M = 4.00 g/mol), what is the approximate molar mass of gas Y?</div>'+
+      '<div class="predict-opts" id="gd-opts6">'+
+        '<div class="predict-opt" data-v="16">\u2248 16 g/mol</div>'+
+        '<div class="predict-opt" data-v="2">\u2248 2 g/mol</div>'+
+        '<div class="predict-opt" data-v="8">\u2248 8 g/mol</div>'+
+      '</div>'+
+      '<div class="reveal" id="gd-reveal6">rate<sub>X</sub>/rate<sub>Y</sub> = t<sub>Y</sub>/t<sub>X</sub> = 60/30 = 2.0 = &radic;(M<sub>Y</sub>/M<sub>X</sub>). Squaring: M<sub>Y</sub>/M<sub>X</sub> = 4.0, so M<sub>Y</sub> = 4.0 &times; 4.00 g/mol = <b>16.0 g/mol</b> (consistent with something like CH\u2084 or O\u2082-family light gas). Notice time is inversely related to rate &mdash; the slower gas took longer, so it must be heavier.</div>'+
+      '<div class="note">This completes the guided lab. Head to the Tiered Quiz to test what you\u2019ve learned.</div>';
+    gdBody.innerHTML = html;
+    document.querySelectorAll('#gd-opts6 .predict-opt').forEach(function(opt){
+      opt.addEventListener('click', function(){
+        document.querySelectorAll('#gd-opts6 .predict-opt').forEach(function(o){o.classList.remove('selected','correct','wrong');});
+        opt.classList.add(opt.dataset.v==='16' ? 'correct' : 'wrong');
+        document.getElementById('gd-reveal6').classList.add('show');
+      });
+    });
+  }
+
+  gdResizeSims();
+}
+
+gdPrev.addEventListener('click', function(){ if(gdStep>0){ gdStep--; renderGuidedStep(); } });
+gdNext.addEventListener('click', function(){
+  if(gdStep<GD_TOTAL-1){ gdStep++; } else { gdStep = 0; }
+  renderGuidedStep();
+});
+renderGuidedStep();
+
+/* ================= QUIZ ================= */
+const QUIZ = {
+  1: [
+    {q:'A tube has ammonia (NH\u2083) introduced at one end and hydrogen chloride (HCl) at the other. A white ring forms, but not at the midpoint. Which best explains why?',
+     choices:['NH\u2083 and HCl have different molar masses, so at the same temperature they have different average speeds.','NH\u2083 is a gas and HCl is not.','The tube was tilted during the demo.','HCl reacts faster than NH\u2083 diffuses.'],
+     correct:0, explain:'At a given temperature, all gas particles share the same average kinetic energy (KE=\u00bdmv\u00b2). Because NH\u2083 (M=17.03) is lighter than HCl (M=36.46), it moves faster on average and covers more distance before the fronts meet.'},
+    {q:'Which of these gases would you expect to diffuse fastest at room temperature?',
+     choices:['CO\u2082 (44.01 g/mol)','O\u2082 (32.00 g/mol)','CH\u2084 (16.04 g/mol)','He (4.00 g/mol)'],
+     correct:3, explain:'Average speed \u221d 1/\u221aM at a fixed temperature, so the lowest-molar-mass gas (He) diffuses fastest.'},
+    {q:'Two non-reacting gases are released from opposite ends of a tube. Will a visible solid form where their fronts meet?',
+     choices:['Yes, always, once diffusion rates differ enough.','No \u2014 forming a solid requires an actual chemical reaction between the gases, not just a difference in speed.','Only if the gases are colored.','Only above room temperature.'],
+     correct:1, explain:'Diffusion rate differences exist for every gas pair (governed by molar mass), but a precipitate only forms if the two gases actually react chemically.'},
+    {q:'The diffusion tube experiment is repeated at a higher temperature (same two gases). What happens to the TIME it takes the fronts to meet?',
+     choices:['It decreases, because average particle speed increases with temperature.','It increases.','It stays exactly the same.','It depends on the color of the gases.'],
+     correct:0, explain:'v_rms \u221d \u221aT, so raising temperature speeds up both gases and the fronts meet sooner.'},
+    {q:'In the effusion race, which property most directly determines how quickly a gas escapes through a small opening?',
+     choices:['The color used to represent the gas','Average molecular speed, which depends on molar mass at a given temperature','The shape of the container','How reactive the gas is'],
+     correct:1, explain:'Effusion rate depends on how fast particles arrive at the opening \u2014 governed by average speed, which is set by molar mass and temperature (Graham\u2019s Law).'}
+  ],
+  2: [
+    {q:'What is the ratio of average speeds, rate(NH\u2083) : rate(HCl), using Graham\u2019s Law? (M_NH3=17.03, M_HCl=36.46)',
+     choices:['1.46','2.14','0.68','4.60'],
+     correct:0, explain:'rate_A/rate_B = \u221a(M_B/M_A) = \u221a(36.46/17.03) = \u221a2.14 \u2248 1.46.'},
+    {q:'For He (M=4.00) and O\u2082 (M=32.00), what is rate(He)/rate(O\u2082)?',
+     choices:['2.83','8.00','0.35','16.0'],
+     correct:0, explain:'\u221a(32.00/4.00) = \u221a8 \u2248 2.83.'},
+    {q:'A ring forms at 59% of the tube length from the NH\u2083 end when paired with HCl. If HCl is replaced with the heavier HBr (M=80.91), what happens to the ring position?',
+     choices:['It shifts closer to the HBr end (farther from the NH\u2083 end).','It shifts closer to the NH\u2083 end.','It stays at 59% \u2014 position never depends on the right-side gas.','The ring disappears.'],
+     correct:0, explain:'HBr is heavier and slower, so it covers less distance before meeting NH\u2083 \u2014 the meeting point moves deeper into HBr\u2019s side (farther from the NH\u2083 end).'},
+    {q:'Two gases effuse with a rate ratio of 3:1 (light:heavy). The lighter gas has M=4.0 g/mol. Using Graham\u2019s Law, what is the heavier gas\u2019s molar mass?',
+     choices:['36.0 g/mol','12.0 g/mol','1.33 g/mol','9.0 g/mol'],
+     correct:0, explain:'rate_light/rate_heavy = \u221a(M_heavy/M_light) = 3 \u2192 M_heavy = 9 \u00d7 4.0 = 36.0 g/mol.'},
+    {q:'At the same temperature, gas X has twice the average speed of gas Y. What is the ratio of molar masses M_X : M_Y?',
+     choices:['1 : 4 (Y is four times heavier than X)','4 : 1','1 : 2','2 : 1'],
+     correct:0, explain:'v_X/v_Y = \u221a(M_Y/M_X) = 2 \u2192 M_Y/M_X = 4, so M_X:M_Y = 1:4.'}
+  ],
+  3: [
+    {q:'Which explanation most completely justifies, at the particulate level, why the NH\u2084Cl ring forms closer to the HCl end than the NH\u2083 end?',
+     choices:['At a fixed temperature, average kinetic energy (\u00bdmv\u00b2) is the same for all gases; since NH\u2083 has smaller mass, it must have greater average velocity to match that KE, so it travels farther before the fronts meet.','HCl is denser than NH\u2083, so it sinks and moves less.','NH\u2083 has stronger intermolecular forces, pulling it toward HCl.','HCl reacts before it has a chance to travel very far.'],
+     correct:0, explain:'This is the KMT argument the AP exam expects: KE=\u00bdmv\u00b2 is equal on average at a given T, so lower mass forces higher average speed \u2014 not density, IMFs, or reaction speed (the tube is horizontal, so gravity/density arguments don\u2019t apply to gas-phase diffusion here).'},
+    {q:'Gas P (identified as O\u2082, M=32.00 g/mol) empties a fixed volume by effusion in 40 s. Under identical conditions, gas Q takes 75 s. What is the approximate molar mass of gas Q?',
+     choices:['\u2248 112 g/mol','\u2248 57 g/mol','\u2248 14 g/mol','\u2248 32 g/mol'],
+     correct:0, explain:'rate_P/rate_Q = t_Q/t_P = 75/40 = 1.875 = \u221a(M_Q/M_P). Squaring: M_Q = 32.00 \u00d7 1.875\u00b2 \u2248 112 g/mol.'},
+    {q:'The same two-gas diffusion tube experiment is repeated at a higher temperature. Which statement correctly predicts the effect on RING POSITION (as a % of tube length)?',
+     choices:['Ring position stays the same, because both gases\u2019 average speeds increase by the same factor \u221aT, leaving their speed ratio (and meeting point) unchanged \u2014 only the time to form the ring decreases.','The ring moves closer to the lighter gas, because it speeds up more.','The ring moves closer to the heavier gas.','The ring disappears at high temperature.'],
+     correct:0, explain:'Since v \u221d \u221a(T/M) for every gas, raising T multiplies both speeds by the same \u221aT factor. Their ratio \u2014 which sets the meeting point \u2014 is unchanged; only the time scale shrinks.'},
+    {q:'In NH\u2083(g) + HCl(g) \u2192 NH\u2084Cl(s), 0.020 mol of NH\u2083 reacts completely with 0.020 mol of HCl at the ring. Why doesn\u2019t this 1:1 stoichiometric ratio affect WHERE along the tube the ring forms?',
+     choices:['Ring position is set by relative diffusion speeds (molar mass), not by the reaction\u2019s mole ratio \u2014 the reaction simply consumes whatever particles arrive at that location.','It does affect position; a 1:1 ratio always centers the ring exactly at the midpoint.','Stoichiometry only matters for aqueous reactions, not gas-phase ones.','The ring position is random and unrelated to any calculation.'],
+     correct:0, explain:'Stoichiometry tells you how much solid forms; diffusion rates (from KMT/Graham\u2019s Law) tell you where the gases happen to meet. These are independent pieces of the picture.'},
+    {q:'A demonstration uses NH\u2083 and HI (M=127.91 g/mol) instead of NH\u2083 and HCl. Compared to the NH\u2083/HCl ring, will the NH\u2083/HI ring form closer to or farther from the NH\u2083 end?',
+     choices:['Farther from the NH\u2083 end (closer to the HI end), because HI is even heavier and slower than HCl, so NH\u2083 covers proportionally more of the tube before they meet.','Closer to the NH\u2083 end, because heavier gases push the reaction zone backward.','In exactly the same position, since only the identity of the halogen changed.','No ring forms at all with HI.'],
+     correct:0, explain:'\u221a(M_HI/M_NH3) = \u221a(127.91/17.03) \u2248 2.74, an even larger ratio than HCl\u2019s 1.46 \u2014 so the meeting point shifts further from NH\u2083, deeper toward the HI end.'}
+  ]
+};
+let quizTier = 1, quizIdx = 0, quizScore = 0, quizAnswered = 0, quizLocked = false;
+const qPrompt = document.getElementById('q-prompt');
+const qChoices = document.getElementById('q-choices');
+const qExplain = document.getElementById('q-explain');
+const qProgress = document.getElementById('q-progress');
+const qScore = document.getElementById('q-score');
+const qNext = document.getElementById('q-next');
+
+function renderQuiz(){
+  const set = QUIZ[quizTier];
+  const item = set[quizIdx];
+  quizLocked = false;
+  qProgress.textContent = 'Question '+(quizIdx+1)+' of '+set.length;
+  qScore.textContent = 'Score: '+quizScore+' / '+quizAnswered;
+  qPrompt.innerHTML = item.q;
+  qExplain.classList.remove('show'); qExplain.innerHTML = '';
+  qNext.style.display = 'none';
+  qChoices.innerHTML = '';
+  item.choices.forEach(function(choiceText, i){
+    const div = document.createElement('div');
+    div.className = 'q-choice';
+    div.innerHTML = choiceText;
+    div.addEventListener('click', function(){
+      if(quizLocked) return;
+      quizLocked = true; quizAnswered++;
+      const correct = i===item.correct;
+      if(correct) quizScore++;
+      Array.from(qChoices.children).forEach(function(c,ci){
+        if(ci===item.correct) c.classList.add('correct');
+        else if(ci===i) c.classList.add('wrong');
+        c.classList.add('disabled');
+      });
+      qExplain.innerHTML = (correct ? '<b>Correct.</b> ' : '<b>Not quite.</b> ') + item.explain;
+      qExplain.classList.add('show');
+      qScore.textContent = 'Score: '+quizScore+' / '+quizAnswered;
+      qNext.style.display = 'inline-block';
+      qNext.textContent = (quizIdx<set.length-1) ? 'Next Question \u2192' : 'Restart Tier \u21ba';
+    });
+    qChoices.appendChild(div);
+  });
+}
+qNext.addEventListener('click', function(){
+  const set = QUIZ[quizTier];
+  if(quizIdx<set.length-1) quizIdx++;
+  else { quizIdx=0; quizScore=0; quizAnswered=0; }
+  renderQuiz();
+});
+document.querySelectorAll('.tier-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tier-btn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    quizTier = parseInt(btn.dataset.t,10); quizIdx=0; quizScore=0; quizAnswered=0;
+    renderQuiz();
+  });
+});
+renderQuiz();
+
+})();
+</script>
+</body>
+</html>
